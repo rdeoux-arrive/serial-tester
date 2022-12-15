@@ -1,7 +1,11 @@
 [package]
 name = "serial-tester"
-version = "0.1.0"
+version = "1.0.0"
+authors = ["Romain DÉOUX <romain.deoux@flowbird.group>"]
 edition = "2021"
+description = "Test a serial wire"
+repository = "https://bitbucket.org/rdeoux/serial-tester.git"
+publish = false
 
 [dependencies]
 clap = { version = "4.0.29", features = ["derive"] }

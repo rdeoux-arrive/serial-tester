@@ -12,8 +12,8 @@ use clap::Parser;
 use serialport::{ClearBuffer, SerialPort};
 use tap::Tap;
 
-/// Test a serial wire
 #[derive(Parser)]
+#[command(version, author, about)]
 struct Args {
     /// Path to the first serial port
     pub first: String,
