@@ -1,0 +1,13 @@
+[package]
+name = "serial-tester"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.0.29", features = ["derive"] }
+colored = "2.0.0"
+nix = "0.26.1"
+serialport = "4.2.0"
+
+[target.'cfg(unix)'.dependencies]
+termios = "0.3.3"
