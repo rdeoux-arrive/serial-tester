@@ -1,4 +1,6 @@
 use colored::Colorize;
+#[cfg(windows)]
+use colored::control::{SHOULD_COLORIZE, set_virtual_terminal};
 
 pub trait Diagnostic {
     fn diagnostic(self);
@@ -24,6 +26,10 @@ pub struct Tap {
 
 impl Tap {
     pub fn new(plan: usize) -> Self {
+        #[cfg(windows)]
+        if SHOULD_COLORIZE.should_colorize() {
+            set_virtual_terminal(true).ok();
+        }
         println!("{}", format!("1..{plan}").bold());
         Self { counter: 0, plan }
     }
