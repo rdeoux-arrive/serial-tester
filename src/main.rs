@@ -57,13 +57,13 @@ where
 
 fn test_transmit<S: SerialPort>(first: &mut S, second: &mut S) -> Result<(), serialport::Error> {
     // Send a pattern
-    const PATTERN: &[u8] = b"1234567890";
-    first.write_all(PATTERN)?;
+    let pattern: Vec<_> = (u8::MIN..=u8::MAX).collect();
+    first.write_all(&pattern)?;
 
     // Wait for the input end to receive at least N bytes
     let ready = wait(
-        || second.bytes_to_read().map(|i| i as usize >= PATTERN.len()),
-        Duration::from_millis(100),
+        || second.bytes_to_read().map(|i| i as usize >= pattern.len()),
+        Duration::from_millis(200),
     )?;
 
     if !ready {
@@ -76,7 +76,7 @@ fn test_transmit<S: SerialPort>(first: &mut S, second: &mut S) -> Result<(), ser
     second.read_exact(&mut buf)?;
 
     // Compare
-    if buf == PATTERN {
+    if buf == pattern {
         Ok(())
     } else {
         Err(Error::new(
@@ -84,7 +84,7 @@ fn test_transmit<S: SerialPort>(first: &mut S, second: &mut S) -> Result<(), ser
             format!(
                 "content mismatched: “{}” != “{}”",
                 buf.escape_ascii(),
-                PATTERN.escape_ascii()
+                pattern.escape_ascii()
             ),
         )
         .into())
