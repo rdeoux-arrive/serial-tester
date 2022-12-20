@@ -63,7 +63,7 @@ fn test_transmit<S: SerialPort>(first: &mut S, second: &mut S) -> Result<(), ser
     // Wait for the input end to receive at least N bytes
     let ready = wait(
         || second.bytes_to_read().map(|i| i as usize >= pattern.len()),
-        Duration::from_millis(200),
+        Duration::from_millis(500),
     )?;
 
     if !ready {
