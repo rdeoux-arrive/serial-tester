@@ -9,6 +9,7 @@ use std::{
 };
 
 use clap::Parser;
+use colored::Colorize;
 use serialport::{ClearBuffer, SerialPort};
 use tap::Tap;
 
@@ -55,7 +56,31 @@ where
     }
 }
 
-fn test_transmit<S: SerialPort>(first: &mut S, second: &mut S) -> Result<(), serialport::Error> {
+fn test_transmit<S: SerialPort>(
+    dtr: bool,
+    dsr: bool,
+    rts: bool,
+    cts: bool,
+    first: &mut S,
+    second: &mut S,
+) -> Result<(), serialport::Error> {
+    // Define the pins
+    first.write_data_terminal_ready(dtr)?;
+    second.write_data_terminal_ready(dsr)?;
+    first.write_request_to_send(rts)?;
+    second.write_request_to_send(cts)?;
+
+    // Wait for the pins to be ready
+    wait(
+        || -> serialport::Result<bool> {
+            Ok(second.read_data_set_ready()? == dsr
+                && first.read_data_set_ready()? == dsr
+                && second.read_clear_to_send()? == rts
+                && first.read_clear_to_send()? == cts)
+        },
+        Duration::from_millis(100),
+    )?;
+
     // Send a pattern
     let pattern: Vec<_> = (u8::MIN..=u8::MAX).collect();
     first.write_all(&pattern)?;
@@ -94,24 +119,22 @@ fn test_transmit<S: SerialPort>(first: &mut S, second: &mut S) -> Result<(), ser
 fn main() {
     let args = Args::parse();
 
-    let mut tap = Tap::new(14);
+    let mut tap = Tap::new(134);
 
     let first = serialport::new(&args.first, 9600).open_native();
     tap.result(format!("open {:?}", args.first), first.as_ref());
+    #[cfg(unix)]
+    let first = first.map(posix::FixedTTYPort);
 
     let second = serialport::new(&args.second, 9600).open_native();
     tap.result(format!("open {:?}", args.second), second.as_ref());
+    #[cfg(unix)]
+    let second = second.map(posix::FixedTTYPort);
 
-    if let (Ok(first), Ok(second)) = (first, second) {
-        #[cfg(unix)]
-        let mut first = posix::FixedTTYPort(first);
-        #[cfg(windows)]
-        let mut first = first;
-        #[cfg(unix)]
-        let mut second = posix::FixedTTYPort(second);
-        #[cfg(windows)]
-        let mut second = second;
+    let mut first = first;
+    let mut second = second;
 
+    if let (Ok(first), Ok(second)) = (&mut first, &mut second) {
         tap.result(
             "test RTS → CTS",
             test_pin(
@@ -119,7 +142,11 @@ fn main() {
                 || second.read_clear_to_send(),
             ),
         );
+    } else {
+        tap.skip("test RTS → CTS");
+    }
 
+    if let (Ok(first), Ok(second)) = (&mut first, &mut second) {
         tap.result(
             "test CTS ← RTS",
             test_pin(
@@ -127,7 +154,11 @@ fn main() {
                 || first.read_clear_to_send(),
             ),
         );
+    } else {
+        tap.skip("test CTS ← RTS")
+    }
 
+    if let (Ok(first), Ok(second)) = (&mut first, &mut second) {
         tap.result(
             "test DTR → DSR",
             test_pin(
@@ -135,7 +166,11 @@ fn main() {
                 || second.read_data_set_ready(),
             ),
         );
+    } else {
+        tap.skip("test DTR → DSR")
+    }
 
+    if let (Ok(first), Ok(second)) = (&mut first, &mut second) {
         tap.result(
             "test DSR ← DTR",
             test_pin(
@@ -143,9 +178,13 @@ fn main() {
                 || first.read_data_set_ready(),
             ),
         );
+    } else {
+        tap.skip("test DSR ← DTR")
+    }
 
-        for baud_rate in BAUD_RATES {
-            for port in [&mut first, &mut second] {
+    for baud_rate in BAUD_RATES {
+        if let (Ok(first), Ok(second)) = (&mut first, &mut second) {
+            for port in [first, second] {
                 port.set_baud_rate(baud_rate)
                     .expect("failed to set the baudrate");
                 port.clear(ClearBuffer::All)
@@ -153,25 +192,44 @@ fn main() {
             }
 
             sleep(Duration::from_millis(10));
-
-            tap.result(
-                format!("send data at {baud_rate} bps..."),
-                test_transmit(&mut first, &mut second),
-            );
-
-            tap.result(
-                format!("receive data at {baud_rate} bps..."),
-                test_transmit(&mut second, &mut first),
-            );
         }
-    } else {
-        tap.skip("test RTS → CTS");
-        tap.skip("test CTS ← RTS");
-        tap.skip("test DTR → DSR");
-        tap.skip("test DSR ← DTR");
-        for baud_rate in BAUD_RATES {
-            tap.skip(format!("send data at {baud_rate} bps..."));
-            tap.skip(format!("receive data at {baud_rate} bps..."));
+
+        for pins in 0..=0xf {
+            let dtr = pins & 1 != 0;
+            let dsr = pins & 2 != 0;
+            let rts = pins & 4 != 0;
+            let cts = pins & 8 != 0;
+            let description = format!(
+                "send data at {baud_rate} bps (DTR {}, DSR {}, RTS {}, CTS {})",
+                if dtr { "up".green() } else { "down".red() },
+                if dsr { "up".green() } else { "down".red() },
+                if rts { "up".green() } else { "down".red() },
+                if cts { "up".green() } else { "down".red() },
+            );
+            if let (Ok(first), Ok(second)) = (&mut first, &mut second) {
+                tap.result(
+                    description,
+                    test_transmit(dtr, dsr, rts, cts, first, second),
+                );
+            } else {
+                tap.skip(description);
+            }
+
+            let description = format!(
+                "receive data at {baud_rate} bps (DTR {}, DSR {}, RTS {}, CTS {})",
+                if dtr { "up".green() } else { "down".red() },
+                if dsr { "up".green() } else { "down".red() },
+                if rts { "up".green() } else { "down".red() },
+                if cts { "up".green() } else { "down".red() },
+            );
+            if let (Ok(first), Ok(second)) = (&mut first, &mut second) {
+                tap.result(
+                    description,
+                    test_transmit(dsr, dtr, cts, rts, second, first),
+                );
+            } else {
+                tap.skip(description)
+            }
         }
     }
 }
