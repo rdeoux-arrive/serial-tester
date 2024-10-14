@@ -34,7 +34,7 @@ impl Tap {
         Self { counter: 0, plan }
     }
 
-    pub fn ok<S>(&mut self, description: S)
+    fn ok<S>(&mut self, description: S)
     where
         S: AsRef<str>,
     {
@@ -56,7 +56,7 @@ impl Tap {
         self.ok(format!("{} {}", description.as_ref(), "# SKIP".dimmed()));
     }
 
-    pub fn not_ok<S, T>(&mut self, description: S, error: T)
+    fn not_ok<S, T>(&mut self, description: S, error: T)
     where
         S: AsRef<str>,
         T: Diagnostic,
