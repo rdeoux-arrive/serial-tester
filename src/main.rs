@@ -155,7 +155,7 @@ fn main() {
             ),
         );
     } else {
-        tap.skip("test CTS ← RTS")
+        tap.skip("test CTS ← RTS");
     }
 
     if let (Ok(first), Ok(second)) = (&mut first, &mut second) {
@@ -167,7 +167,7 @@ fn main() {
             ),
         );
     } else {
-        tap.skip("test DTR → DSR")
+        tap.skip("test DTR → DSR");
     }
 
     if let (Ok(first), Ok(second)) = (&mut first, &mut second) {
@@ -179,7 +179,7 @@ fn main() {
             ),
         );
     } else {
-        tap.skip("test DSR ← DTR")
+        tap.skip("test DSR ← DTR");
     }
 
     for baud_rate in BAUD_RATES {
@@ -228,7 +228,7 @@ fn main() {
                     test_transmit(dsr, dtr, cts, rts, second, first),
                 );
             } else {
-                tap.skip(description)
+                tap.skip(description);
             }
         }
     }
