@@ -2,6 +2,7 @@
 mod posix;
 mod tap;
 
+use core::fmt::{self, Display, Formatter};
 use std::{
     io::{Error, ErrorKind},
     thread::sleep,
@@ -9,7 +10,7 @@ use std::{
 };
 
 use clap::Parser;
-use colored::Colorize;
+use colored::{ColoredString, Colorize};
 use serialport::{ClearBuffer, SerialPort};
 use tap::Tap;
 
@@ -56,27 +57,50 @@ where
     }
 }
 
+#[allow(clippy::struct_excessive_bools)]
+struct Pins {
+    data_terminal_ready: bool,
+    data_set_ready: bool,
+    request_to_send: bool,
+    clear_to_send: bool,
+}
+
+impl Display for Pins {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        fn state_of(pin: bool) -> ColoredString {
+            if pin {
+                "up".green()
+            } else {
+                "down".red()
+            }
+        }
+
+        let dtlr = state_of(self.data_terminal_ready);
+        let dstr = state_of(self.data_set_ready);
+        let rts = state_of(self.request_to_send);
+        let cts = state_of(self.clear_to_send);
+        write!(f, "DTR {dtlr}, DSR {dstr}, RTS {rts}, CTS {cts}")
+    }
+}
+
 fn test_transmit<S: SerialPort>(
-    dtr: bool,
-    dsr: bool,
-    rts: bool,
-    cts: bool,
+    pins: &Pins,
     first: &mut S,
     second: &mut S,
 ) -> Result<(), serialport::Error> {
     // Define the pins
-    first.write_data_terminal_ready(dtr)?;
-    second.write_data_terminal_ready(dsr)?;
-    first.write_request_to_send(rts)?;
-    second.write_request_to_send(cts)?;
+    first.write_data_terminal_ready(pins.data_terminal_ready)?;
+    second.write_data_terminal_ready(pins.data_set_ready)?;
+    first.write_request_to_send(pins.request_to_send)?;
+    second.write_request_to_send(pins.clear_to_send)?;
 
     // Wait for the pins to be ready
     wait(
         || -> serialport::Result<bool> {
-            Ok(second.read_data_set_ready()? == dsr
-                && first.read_data_set_ready()? == dsr
-                && second.read_clear_to_send()? == rts
-                && first.read_clear_to_send()? == cts)
+            Ok(second.read_data_set_ready()? == pins.data_terminal_ready
+                && first.read_data_set_ready()? == pins.data_set_ready
+                && second.read_clear_to_send()? == pins.request_to_send
+                && first.read_clear_to_send()? == pins.clear_to_send)
         },
         Duration::from_millis(100),
     )?;
@@ -195,38 +219,22 @@ fn main() {
         }
 
         for pins in 0..=0xf {
-            let dtr = pins & 1 != 0;
-            let dsr = pins & 2 != 0;
-            let rts = pins & 4 != 0;
-            let cts = pins & 8 != 0;
-            let description = format!(
-                "send data at {baud_rate} bps (DTR {}, DSR {}, RTS {}, CTS {})",
-                if dtr { "up".green() } else { "down".red() },
-                if dsr { "up".green() } else { "down".red() },
-                if rts { "up".green() } else { "down".red() },
-                if cts { "up".green() } else { "down".red() },
-            );
+            let pins = Pins {
+                data_terminal_ready: pins & 1 != 0,
+                data_set_ready: pins & 2 != 0,
+                request_to_send: pins & 4 != 0,
+                clear_to_send: pins & 8 != 0,
+            };
+            let description = format!("send data at {baud_rate} bps ({pins})");
             if let (Ok(first), Ok(second)) = (&mut first, &mut second) {
-                tap.result(
-                    description,
-                    test_transmit(dtr, dsr, rts, cts, first, second),
-                );
+                tap.result(description, test_transmit(&pins, first, second));
             } else {
                 tap.skip(description);
             }
 
-            let description = format!(
-                "receive data at {baud_rate} bps (DTR {}, DSR {}, RTS {}, CTS {})",
-                if dtr { "up".green() } else { "down".red() },
-                if dsr { "up".green() } else { "down".red() },
-                if rts { "up".green() } else { "down".red() },
-                if cts { "up".green() } else { "down".red() },
-            );
+            let description = format!("receive data at {baud_rate} bps ({pins})");
             if let (Ok(first), Ok(second)) = (&mut first, &mut second) {
-                tap.result(
-                    description,
-                    test_transmit(dsr, dtr, cts, rts, second, first),
-                );
+                tap.result(description, test_transmit(&pins, second, first));
             } else {
                 tap.skip(description);
             }
