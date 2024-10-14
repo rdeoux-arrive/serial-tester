@@ -1,6 +1,7 @@
 #[cfg(windows)]
 use colored::control::{set_virtual_terminal, SHOULD_COLORIZE};
 use colored::Colorize;
+use indicatif::{ProgressBar, ProgressStyle};
 
 pub trait Diagnostic {
     fn diagnostic(self);
@@ -22,6 +23,7 @@ impl Diagnostic for serialport::Error {
 pub struct Tap {
     counter: usize,
     plan: usize,
+    bar: ProgressBar,
 }
 
 impl Tap {
@@ -31,7 +33,11 @@ impl Tap {
             set_virtual_terminal(true).ok();
         }
         println!("{}", format!("1..{plan}").bold());
-        Self { counter: 0, plan }
+        let counter = 0;
+        let style = ProgressStyle::with_template("{bar:40.cyan.on_white} {pos}/{len}").unwrap();
+        let style = style.progress_chars("█▉▊▋▌▍▎▏ ");
+        let bar = ProgressBar::new(plan as u64).with_style(style);
+        Self { counter, plan, bar }
     }
 
     fn ok<S>(&mut self, description: S)
@@ -40,12 +46,15 @@ impl Tap {
     {
         if self.counter < self.plan {
             self.counter += 1;
-            println!(
-                "{} {} - {}",
-                "ok".bold(),
-                self.counter.to_string().cyan(),
-                description.as_ref()
-            );
+            self.bar.suspend(|| {
+                println!(
+                    "{} {} - {}",
+                    "ok".bold(),
+                    self.counter.to_string().cyan(),
+                    description.as_ref()
+                );
+            });
+            self.bar.inc(1);
         }
     }
 
@@ -63,15 +72,18 @@ impl Tap {
     {
         if self.counter < self.plan {
             self.counter += 1;
-            println!(
-                "{} {} - {}",
-                "not ok".red(),
-                self.counter.to_string().cyan(),
-                description.as_ref()
-            );
-            println!("  ---");
-            error.diagnostic();
-            println!("  ...");
+            self.bar.suspend(|| {
+                println!(
+                    "{} {} - {}",
+                    "not ok".red(),
+                    self.counter.to_string().cyan(),
+                    description.as_ref()
+                );
+                println!("  ---");
+                error.diagnostic();
+                println!("  ...");
+            });
+            self.bar.inc(1);
         }
     }
 
