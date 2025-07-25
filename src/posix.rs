@@ -7,7 +7,7 @@ use std::{
 
 use nix::{
     ioctl_read_bad,
-    libc::{TIOCMGET, TIOCM_CD, TIOCM_CTS, TIOCM_DSR, TIOCM_RI},
+    libc::{TIOCM_CD, TIOCM_CTS, TIOCM_DSR, TIOCM_RI, TIOCMGET},
 };
 use serialport::{ClearBuffer, DataBits, FlowControl, Parity, Result, SerialPort, StopBits};
 
@@ -18,7 +18,7 @@ pub struct FixedTTYPort(pub serialport::TTYPort);
 impl FixedTTYPort {
     fn read_pin(&mut self, pin: c_int) -> Result<bool> {
         let mut status = 0;
-        unsafe { tiocmget(self.0.as_raw_fd(), &mut status) }
+        unsafe { tiocmget(self.0.as_raw_fd(), &raw mut status) }
             .map(|_| status & pin == pin)
             .map_err(|err| Error::from(err).into())
     }

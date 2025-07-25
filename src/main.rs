@@ -50,10 +50,10 @@ where
         if wait(get, Duration::from_millis(100))? {
             Ok(())
         } else {
-            Err(Error::new(ErrorKind::Other, "stayed low").into())
+            Err(Error::other("stayed low").into())
         }
     } else {
-        Err(Error::new(ErrorKind::Other, "stayed high").into())
+        Err(Error::other("stayed high").into())
     }
 }
 
@@ -68,11 +68,7 @@ struct Pins {
 impl Display for Pins {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         fn state_of(pin: bool) -> ColoredString {
-            if pin {
-                "up".green()
-            } else {
-                "down".red()
-            }
+            if pin { "up".green() } else { "down".red() }
         }
 
         let dtlr = state_of(self.data_terminal_ready);
@@ -128,14 +124,11 @@ fn test_transmit<S: SerialPort>(
     if buf == pattern {
         Ok(())
     } else {
-        Err(Error::new(
-            ErrorKind::Other,
-            format!(
-                "content mismatched: “{}” != “{}”",
-                buf.escape_ascii(),
-                pattern.escape_ascii()
-            ),
-        )
+        Err(Error::other(format!(
+            "content mismatched: “{}” != “{}”",
+            buf.escape_ascii(),
+            pattern.escape_ascii()
+        ))
         .into())
     }
 }

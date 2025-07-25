@@ -1,6 +1,6 @@
-#[cfg(windows)]
-use colored::control::{set_virtual_terminal, SHOULD_COLORIZE};
 use colored::Colorize;
+#[cfg(windows)]
+use colored::control::{SHOULD_COLORIZE, set_virtual_terminal};
 use indicatif::{ProgressBar, ProgressStyle};
 
 pub trait Diagnostic {
