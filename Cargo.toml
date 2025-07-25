@@ -1,18 +1,17 @@
 [package]
 name = "serial-tester"
 version = "1.1.0"
-authors = ["Romain DÉOUX <romain.deoux@flowbird.group>"]
-edition = "2021"
+edition = "2024"
 description = "Test a serial wire"
-repository = "https://bitbucket.org/rdeoux/serial-tester.git"
+repository = "https://github.com/rdeoux-arrive/serial-tester.git"
 publish = false
 
 [dependencies]
-clap = { version = "4.5.20", features = ["derive"] }
-colored = "2.1.0"
-indicatif = "0.17.8"
-nix = { version = "0.29.0", features = ["ioctl"] }
-serialport = "4.5.1"
+clap = { version = "4.5.41", features = ["derive"] }
+colored = "3.0.0"
+indicatif = "0.18.0"
+nix = { version = "0.30.1", features = ["ioctl"] }
+serialport = "4.7.2"
 
 [target.'cfg(unix)'.dependencies]
 termios = "0.3.3"
