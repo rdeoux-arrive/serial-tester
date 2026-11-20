@@ -10,8 +10,5 @@ publish = false
 clap = { version = "4.6.9", features = ["derive"] }
 colored = "3.1.1"
 indicatif = "0.18.6"
-nix = { version = "0.30.1", features = ["ioctl"] }
+nix = { version = "0.32.0", features = ["ioctl"] }
 serialport = "4.10.1"
-
-[target.'cfg(unix)'.dependencies]
-termios = "0.3.3"
